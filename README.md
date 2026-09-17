@@ -1,14 +1,23 @@
-# navdiag — toolkit de diagnóstico de navegación
+# navdiag
 
-Abre una página, ejecuta una secuencia de acciones (_"anda a tal página y
-apreta tal botón"_) y guarda **todo** lo que ocurrió en un expediente local
-estructurado y fácil de leer por una IA: requests/responses (GET, POST, …),
+Toolkit de diagnóstico de navegación **cuyo output está pensado para que lo lea
+un modelo**, no una persona.
+
+Abres una página, ejecutas una secuencia de acciones (*"anda a tal página y
+aprieta tal botón"*) y navdiag guarda todo lo que pasó por debajo en un
+expediente local estructurado: requests y responses con sus payloads,
 endpoints/XHR, HTML renderizado, CSS, JS, cookies, localStorage, consola y
-screenshots — todo con timestamp.
+screenshots, todo con timestamp.
 
-Pensado para **acelerar el scraping** y la **auto-reparación de scrappers**:
-cuando un scrapper se rompe, corres un diagnóstico y la IA tiene en un solo
-lugar los endpoints reales, los payloads y el DOM actual.
+## Por qué existe
+
+Cuando un scrapper se rompe, el trabajo caro no es escribir el código nuevo: es
+volver a descubrir qué endpoints usa el sitio hoy, qué payload esperan y qué
+cambió en el DOM. navdiag hace ese descubrimiento una vez y lo deja en
+`endpoints.json` —método, URL, status, headers, `post_data` y preview de la
+respuesta por cada llamada— más un `AI_SUMMARY.md` ya redactado.
+
+Con eso, un agente puede regenerar el scrapper sin abrir un navegador.
 
 ## Instalación
 
@@ -133,3 +142,36 @@ de un scrapper sin tener que abrir un navegador.
 ```bash
 python examples/example_basic.py
 ```
+
+## Arquitectura del modo interactivo
+
+```
+browser_server  (Chromium con puerto CDP, proceso propio)
+      ▲
+      │ CDP
+      │
+   driver       (se conecta UNA vez, escucha por FIFO con select())
+      ▲
+      │ req.fifo / resp.fifo
+      │
+    act         (cliente liviano, un proceso por acción)
+```
+
+La separación existe para que el navegador **no se cierre entre acciones**: la
+sesión, las cookies y el estado de la página sobreviven mientras tú analizas el
+screenshot y decides el paso siguiente. `browser_server` y `driver` se lanzan
+con `setsid` para quedar en su propia sesión y que no los mate el reaper de
+procesos del entorno.
+
+## Límites conocidos
+
+- Requiere Chromium vía Playwright; no soporta Firefox ni WebKit en el modo
+  interactivo.
+- Los expedientes guardan **cookies y localStorage en claro**: si diagnosticas
+  un flujo con login, el directorio `captures/` contiene credenciales de sesión.
+  Está en `.gitignore` por eso — no lo subas.
+- `networkidle` no alcanza en páginas con polling permanente; usar `--settle`.
+
+## Licencia
+
+MIT

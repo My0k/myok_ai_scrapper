@@ -32,7 +32,7 @@ else
 fi
 
 # 2) driver (reinicia si había uno)
-pkill -f "navdiag.driver" 2>/dev/null || true
+pkill -f "[n]avdiag.driver" 2>/dev/null || true
 rm -f captures/live/req.fifo captures/live/resp.fifo
 setsid bash -c "exec python -m navdiag.driver --cdp http://localhost:$PORT --settle ${SETTLE:-2000}" \
   > "$LOGDIR/driver.log" 2>&1 < /dev/null &
